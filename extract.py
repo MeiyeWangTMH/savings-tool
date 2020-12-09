@@ -1,3 +1,4 @@
+#Import libraries
 import csv
 import pandas as pd
 from pandas import *
@@ -9,21 +10,26 @@ from datetime import datetime, timedelta
 import time
 import os
 
+#Input paths
 PATH_INPUT = 'data/input'
 PATH_OUTPUT = 'data/output'
 
-#Should the columns be filtered
-filter_cols = False
+#Optional selection, if not all data should be extracted
+filter_cols = False #False = "all data is extracted"
 cols = ['meter_values_timestamp','charge_current','charge_offer','charge_power','charger_id','connector_id']
 
+#Functions
 def read_input(path):
+    """
+    Read data and delete all unnecessary columns of site index
+    """
     filepath = glob.glob(f'{path}/{PATH_INPUT}/*'+'.csv')
     df = pd.read_csv(filepath[0], delimiter = ",", doublequote = True , encoding = "utf-8")
 
     #formatting: df['timestamp'] to datetime + converting the timezone
-    df['@timestamp'] = pd.to_datetime(df['@timestamp'], errors = 'coerce')
-    df['@timestamp'] = df['@timestamp'].dt.tz_convert('Europe/Berlin')
-    df['@timestamp'] = df['@timestamp'].dt.tz_localize(None)
+    #df['@timestamp'] = pd.to_datetime(df['@timestamp'], errors = 'coerce')
+    #df['@timestamp'] = df['@timestamp'].dt.tz_convert('Europe/Berlin')
+    #df['@timestamp'] = df['@timestamp'].dt.tz_localize(None)
 
 
     #override_max_limit to MW
@@ -46,12 +52,17 @@ def read_input(path):
     return df1
 
 def extraction(df):
+    """
+    In the raw data, extracts the tupel in the field "evs"
+    """
     print("Extract column '"'evs'"''...")
     e = [yaml.load(x, Loader = yaml.FullLoader) for x in df['evs']]
     return e
 
 def range_of_data(df,date_start,date_end):
-    #filerting data (to save computing times)
+    """
+    Optional: filter range to save computing time
+    """
     df1 = df[df['@timestamp'] >= date_start]
     df1 = df1[df1['@timestamp'] < date_end]
 
@@ -62,13 +73,19 @@ def merge_stationen(e):
     return stationen
 
 def create_cp_id(stationen):
-    stationen['connector_id'] = np.where(pd.isnull(stationen['connector_id']),1.0,stationen['connector_id'])
+    """
+    Creates new data point "charge_point_id", specific identifier for each charge point
+    """
+    stationen['connector_id'] = np.where(pd.isnull(stationen['connector_id']),1.0,stationen['connector_id']) #Old data did have "connector_id", therefore it is '1.0' instead of null
     stationen['connector_id'] = stationen['connector_id'].apply(str).astype(float)
     stationen['charge_point_id']=stationen['charger_id']+'_'+stationen['connector_id'].apply(str)
     return stationen
 
 
 def create_csv(stationen, filter_cols, cols):
+    """
+    Creates extracted output file for each charge point
+    """
     print("Save charge point files...")
     a = stationen['charge_point_id'].unique()
 
@@ -138,7 +155,7 @@ def save_results(stationen):
 
 def master(path, filtering,date_start,date_end):
     """
-    Extracts and saves all available data from Mulytic raw data index file: Data is stored charge point specific.
+    Extracts and saves all available data raw data index file. Data is stored charge point specific.
     """
     df = read_input(path)
     if filtering == True:
