@@ -6,19 +6,36 @@ import numpy as np
 import yaml
 import glob
 import dateutil.parser
-import math 
+import math
 from datetime import timezone, datetime, timedelta
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from curlyBrace import curlyBrace
 import locale
+import plotly.express as px
 
 #Input paths
 PATH_INPUT = 'data/input'
 PATH_OUTPUT = 'data/output'
 
 #Functions
+
+def extract_garage_data(site_discrete, folder):
+    site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
+    site_discrete['time'] = site_discrete.index.time
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    df_wkd = site_discrete.groupby(['day_name', 'time']).agg({'charge_power_site': 'mean',
+                                                              'total_energy_consumed_site': 'mean'})
+    df_wkd = df_wkd.reindex(days, level=0)
+    #df_wkd.index=df_wkd.index.to_flat_index()
+    df_wkd.to_csv(f'{PATH_OUTPUT}/{folder}/test.csv', sep=';', decimal=',', index=True)
+
+    # plot
+    fig=px.line(df_wkd, x=df_wkd.index.get_level_values(1), y='total_energy_consumed_site')
+    fig.show()
+
+
 def prepare_discrete(path, folder):
     """
     Get discrete site file and transform timestamp
@@ -62,7 +79,7 @@ def prepare_event(path, folder, df_analyse):
 
     z = (x - y) / x
     df_analyse.loc[0, 'Log-error in %'] = round(z, 4) * 100
-    
+
     return site_event
 
 
@@ -81,13 +98,14 @@ def boxplot_Ladedauer(site_event, df_analyse, folder):
     plt.tight_layout
     plt.savefig(f'{PATH_OUTPUT}/{folder}/boxplot_charging_duration_original.pdf', bbox_inches='tight')
 
-
-    if len(box["fliers"][0].get_data()[1]) >= 1:
-        plt.plot([1], [box["fliers"][0].get_data()[1][0]], 'b+')
-        plt.plot([1], [box["fliers"][0].get_data()[1][1]], 'r+')
-        plt.plot([1], [box["fliers"][0].get_data()[1][2]], 'b+')
-        plt.plot([1], [box["fliers"][0].get_data()[1][3]], 'r+')
-    plt.clf()
+    # !!!  Req. debugging --- IndexError: index 2 is out of bounds for axis 0 with size 2
+    # if len(box["fliers"][0].get_data()[1]) >= 1:
+    #     plt.plot([1], [box["fliers"][0].get_data()[1][0]], 'b+')
+    #     plt.plot([1], [box["fliers"][0].get_data()[1][1]], 'r+')
+    #     plt.plot([1], [box["fliers"][0].get_data()[1][2]], 'b+')
+    #     plt.plot([1], [box["fliers"][0].get_data()[1][3]], 'r+')
+    # plt.clf()
+    # !!!
 
     top_points = box['fliers'][0].get_data()[1]
     #     #bottom_points = box["fliers"][2].get_data()[1]
@@ -134,7 +152,7 @@ def boxplot_Ladedauer(site_event, df_analyse, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/boxplot_charging_duration_cleaned.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     return site_event
 
 def E_histogramm_site(site_event, folder):
@@ -177,10 +195,9 @@ def plugged_in_ratio_site(site_discrete, folder, resolution):
     site_discrete['plugged_in'] = np.where(site_discrete['active_charge_points'] > 0, 1, 0)
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     site_discrete['time'] = site_discrete.index.time
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     df2 = site_discrete.groupby(['day_name', 'time']).agg({'plugged_in': 'count'})
     df2['plugged_ins'] = site_discrete.groupby(['day_name', 'time']).agg({'plugged_in': 'sum'})
-
     df2['ratio'] = df2['plugged_ins'] / df2['plugged_in'] * 100
     df2['x'] = 0
     df2 = df2.reindex(days, level=0)
@@ -195,7 +212,7 @@ def plugged_in_ratio_site(site_discrete, folder, resolution):
 
     plt.savefig(f'{PATH_OUTPUT}/{folder}/plugged_in_ratio_site_one_charge_point.pdf', bbox_inches='tight')
     plt.clf()
-    
+
     del site_discrete['plugged_in']
     del site_discrete['day_name']
     del site_discrete['time']
@@ -209,7 +226,7 @@ def utilization_site(site_discrete, folder, resolution):
 
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     site_discrete['time'] = site_discrete.index.time
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     df2 = site_discrete.groupby(['day_name', 'time']).agg({'active_charge_points': 'mean'})
     df2['ratio'] = df2['active_charge_points'] / charge_points * 100
 
@@ -236,7 +253,7 @@ def plugged_in_energy_duration_site(site_discrete, site_event, folder, resolutio
     """
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     site_discrete['time'] = site_discrete.index.time
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     df2 = site_discrete.groupby(['day_name', 'time']).agg({'charge_power_site': 'count'})
     df2 = df2.reindex(days, level=0)
     df2.index = [str(i) for i in (df2.index.map('{0[0]}, {0[1]}'.format))]
@@ -283,7 +300,7 @@ def plugged_in_energy_duration_site(site_discrete, site_event, folder, resolutio
 
     plt.savefig(f'{PATH_OUTPUT}/{folder}/weekly_profile_charging_duration_site.pdf', bbox_inches='tight')
     plt.clf()
-    
+
     site_discrete = site_discrete.drop(columns=['day_name', 'time'])
     #return plt.show()
 
@@ -292,7 +309,7 @@ def plugged(site_discrete, df_analyse, folder, resolution):
     """
     Graphic: Plugged-in ratio on weekly profile
     """
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     colors = ['gainsboro', 'silver', 'grey', 'dimgrey', 'black', 'cornflowerblue', 'royalblue', 'blue', 'mediumblue',
               'navy']
 
@@ -333,6 +350,7 @@ def plugged(site_discrete, df_analyse, folder, resolution):
     plt.tight_layout
     plt.legend(bbox_to_anchor=(1.04, 1), loc="upper left")
 
+
     plt.savefig(f'{PATH_OUTPUT}/{folder}/plugged_in_ratio_site.pdf', bbox_inches='tight')
     del site_discrete['day_name']
     del site_discrete['time']
@@ -349,7 +367,7 @@ def power_ratio_site(site_discrete, folder, resolution):
     site_discrete['charge_power_site'] = site_discrete['charge_power_site'] / 1000
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     site_discrete['time'] = site_discrete.index.time
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
     df2 = site_discrete.groupby(['day_name', 'time']).agg({'plugged_in': 'sum'})
     df2['plugged_ins'] = site_discrete.groupby(['day_name', 'time']).agg({'plugged_in': 'count'})
@@ -407,8 +425,7 @@ def energy(site_discrete, site_event, df_days, folder, resolution):
     """
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     # site_discrete['time'] = site_discrete.index.time
-
-    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     df2 = site_discrete.groupby(['day_name']).agg({'charge_power_site': 'count'})
     df2 = df2.reindex(days)
 
@@ -644,9 +661,9 @@ def flexbar_av(df_timeflex, folder):
     curlyBrace.curlyBrace(fig, ax, h_2b, h_2a, k_r2, bool_auto=True, str_text='$P_{max}$', color='black', lw=1, int_line_num=1, fontdict=font)
 
     ax.set_axis_off()
-    ax.legend(bbox_to_anchor=(1.04,1), loc="upper left") 
-    
-    
+    ax.legend(bbox_to_anchor=(1.04,1), loc="upper left")
+
+
     #Numbers
     Flex_P_av = round(df_timeflex['flex P_av'].mean(), 2)
     Flex_P_max = round(df_timeflex['flex P_max'].mean(), 2)
@@ -656,7 +673,7 @@ def flexbar_av(df_timeflex, folder):
     plt.clf()
 
     #return  plt.show()
-    
+
 def idle_time_histogramm(df_timeflex, df_analyse, folder):
     """
     Graphic: Idle time distribution
@@ -664,7 +681,7 @@ def idle_time_histogramm(df_timeflex, df_analyse, folder):
     #Visualization
     #print('Histogramm Idle-Time:')
     df_timeflex['idle_time'] = df_timeflex['idle_time'].dt.total_seconds()/60
-    plt.hist(df_timeflex['idle_time'], bins=np.arange(0, max(df_timeflex['idle_time']) + 15, 15), 
+    plt.hist(df_timeflex['idle_time'], bins=np.arange(0, max(df_timeflex['idle_time']) + 15, 15),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("idle time [in Min]")
     plt.ylabel("Number events")
@@ -672,12 +689,12 @@ def idle_time_histogramm(df_timeflex, df_analyse, folder):
     plt.xlim(0,  max(df_timeflex['idle_time']))
     plt.grid(axis = 'y', zorder = 0)
     plt.tight_layout
-    
+
     x = round((df_timeflex['idle_time'] > 120).value_counts(True)[True], 4)*100
-    
+
     #Numbers for §14a
     df_analyse.loc[0, 'Idle_time_>_2h_in_%'] = x
-    
+
     #print('Idle-Time > 2h: ' + str(x) + '%')
     df_timeflex['idle_time'] = pd.to_timedelta(df_timeflex['idle_time'], unit='T')
     y = df_timeflex['idle_time'].mean().round('s')
@@ -687,7 +704,7 @@ def idle_time_histogramm(df_timeflex, df_analyse, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/idle_time_histogram.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def P_av_Flex_histogramm(df_timeflex, df_analyse, folder):
@@ -702,9 +719,9 @@ def P_av_Flex_histogramm(df_timeflex, df_analyse, folder):
     df_analyse.loc[0, 'average_charge_dutation_P_av'] = x
     df_analyse.loc[0, 'average_power_P_av_kW'] = y
     df_analyse.loc[0, 'average_flex_P_av'] = z
-    
+
     #Visualization
-    plt.hist(df_timeflex['flex P_av'], bins=np.arange(0, max(df_timeflex['flex P_av']) + 1, 1), 
+    plt.hist(df_timeflex['flex P_av'], bins=np.arange(0, max(df_timeflex['flex P_av']) + 1, 1),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("Shifting flexibility with " + '$P_{av}$')
     plt.ylabel("Number events")
@@ -716,7 +733,7 @@ def P_av_Flex_histogramm(df_timeflex, df_analyse, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/P_av_Flex_histogram.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def P_max_Flex_histogramm(df_timeflex, df_analyse, folder):
@@ -731,9 +748,9 @@ def P_max_Flex_histogramm(df_timeflex, df_analyse, folder):
     df_analyse.loc[0, 'average_charge_dutation_P_max'] = x
     df_analyse.loc[0, 'average_power_P_max_kW'] = y
     df_analyse.loc[0, 'average_flex_P_max'] = z
-     
+
     #Visualization
-    plt.hist(df_timeflex['flex P_max'], bins=np.arange(0, max(df_timeflex['flex P_max']) + 1, 1), 
+    plt.hist(df_timeflex['flex P_max'], bins=np.arange(0, max(df_timeflex['flex P_max']) + 1, 1),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("Shifting flexibility with " + '$P_{max}$')
     plt.ylabel("Number events")
@@ -744,7 +761,7 @@ def P_max_Flex_histogramm(df_timeflex, df_analyse, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/P_max_Flex_histogram.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def boxplot_idle_time(df_timeflex, folder):
@@ -752,14 +769,14 @@ def boxplot_idle_time(df_timeflex, folder):
     Graphic: boxplot idle time distribution
     """
     df_timeflex['idle_time'] = df_timeflex['idle_time'].dt.total_seconds()/3600
-    
+
     medianprops = dict( color='black')
 
     box = plt.boxplot(df_timeflex['idle_time'], labels = (['Idle-Time']), medianprops = medianprops)
     plt.ylabel('Idle time [in h]')
     plt.grid(axis = 'y', zorder = 0)
     plt.tight_layout
-    
+
     df_timeflex['idle_time'] = pd.to_timedelta(df_timeflex['idle_time']*3600, unit='s')
 
 
@@ -774,7 +791,7 @@ def idle_time_histogramm_small(df_timeflex, folder):
     """
     #Visualization
     df_timeflex['idle_time'] = df_timeflex['idle_time'].dt.total_seconds()/60
-    plt.hist(df_timeflex['idle_time'], bins=np.arange(0, max(df_timeflex['idle_time']) + 15, 15), 
+    plt.hist(df_timeflex['idle_time'], bins=np.arange(0, max(df_timeflex['idle_time']) + 15, 15),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("Idle time [in min]")
     plt.ylabel("Number events")
@@ -789,7 +806,7 @@ def idle_time_histogramm_small(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}idle_time_histogram_small.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def boxplot_Flex_P_av(df_timeflex, folder):
@@ -807,7 +824,7 @@ def boxplot_Flex_P_av(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/boxplot_Flex_P_av.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def P_av_Flex_histogramm_small(df_timeflex, folder):
@@ -815,7 +832,7 @@ def P_av_Flex_histogramm_small(df_timeflex, folder):
     Graphic: Histrogram flexibility with average power (small)
     """
     #Visualization
-    plt.hist(df_timeflex['flex P_av'], bins=np.arange(0, max(df_timeflex['flex P_av']) + 1, 1), 
+    plt.hist(df_timeflex['flex P_av'], bins=np.arange(0, max(df_timeflex['flex P_av']) + 1, 1),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("Shifting flexibility with " + '$P_{av}$')
     plt.ylabel("Number events")
@@ -827,7 +844,7 @@ def P_av_Flex_histogramm_small(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/P_av_Flex_histogram_small.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def boxplot_Flex_P_max(df_timeflex, folder):
@@ -845,7 +862,7 @@ def boxplot_Flex_P_max(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/boxplot_Flex_P_max.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def P_max_Flex_histogramm_small(df_timeflex, folder):
@@ -853,7 +870,7 @@ def P_max_Flex_histogramm_small(df_timeflex, folder):
     Graphic: histogram flexibility with max power (small)
     """
     #Visualization
-    plt.hist(df_timeflex['flex P_max'], bins=np.arange(0, max(df_timeflex['flex P_max']) + 1, 1), 
+    plt.hist(df_timeflex['flex P_max'], bins=np.arange(0, max(df_timeflex['flex P_max']) + 1, 1),
              edgecolor = 'black', color = 'grey')
     plt.xlabel("Shifting flexibilty with " + '$P_{max}$')
     plt.ylabel("Number events")
@@ -865,7 +882,7 @@ def P_max_Flex_histogramm_small(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/P_max_Flex_histogram_small.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def boxplot_Flex_P(df_timeflex, folder):
@@ -883,7 +900,7 @@ def boxplot_Flex_P(df_timeflex, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/boxplot_Flex_P.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 def timeflex_analyse(df_timeflex, df_analyse, folder):
@@ -952,11 +969,11 @@ def df_year_creation(site_discrete, site_event, folder):
 
     #Empty df
     df_year = pd.DataFrame()
-    
+
     #total energy per Month
     df_year['total_energy_month [kWh]'] = (site_discrete.groupby(['year','month_name'])['total_energy_consumed_site'].last() -
                                      site_discrete.groupby(['year','month_name'])['total_energy_consumed_site'].first())/1000
-    
+
     #Events
     df_year['Number Events'] = site_event.groupby(['year', 'month_name'])['month_name'].count()
     df_year['Number Events'] = df_year['Number Events'].fillna(0)
@@ -1022,7 +1039,7 @@ def create_df_year(site_discrete, path, folder):
     df_year = df_year_creation(site_discrete, site_event, folder)
     site_discrete = del_col_site(site_discrete)
     site_event = del_col_site_event(site_event)
-    return df_year 
+    return df_year
 
 def av_PI_E_diagramm(df_year, folder):
     """
@@ -1052,7 +1069,7 @@ def av_PI_E_diagramm(df_year, folder):
     plt.savefig(f'{PATH_OUTPUT}/{folder}/av_PI_E_diagram.pdf', bbox_inches='tight')
 
     plt.clf()
-    
+
     #return plt.show()
 
 
@@ -1102,6 +1119,8 @@ def analyse_site(path, folder, resolution):
     site_event1 = prepare_event(path, folder, df_analyse)
     site_event2 = boxplot_Ladedauer(site_event1, df_analyse, folder)
 
+    # !!!
+    test(site_discrete1, folder)
     show_graphs_site(site_discrete1, site_event2, df_analyse, df_simultaneity, df_days, folder, resolution)
 
     df_timeflex = timeflex(site_event2)
