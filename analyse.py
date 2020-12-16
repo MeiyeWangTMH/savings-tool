@@ -1120,7 +1120,7 @@ def analyse_site(path, folder, resolution):
     site_event2 = boxplot_Ladedauer(site_event1, df_analyse, folder)
 
     # !!!
-    test(site_discrete1, folder)
+    extract_garage_data(site_discrete1, folder)
     show_graphs_site(site_discrete1, site_event2, df_analyse, df_simultaneity, df_days, folder, resolution)
 
     df_timeflex = timeflex(site_event2)
