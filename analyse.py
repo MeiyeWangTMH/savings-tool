@@ -13,27 +13,108 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from curlyBrace import curlyBrace
 import locale
-import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 #Input paths
 PATH_INPUT = 'data/input'
 PATH_OUTPUT = 'data/output'
 
+
 #Functions
 
-def extract_garage_data(site_discrete, folder):
+def plot_garage_statistics(site_discrete, folder):
+    """
+    Parameters
+    ----------
+    site_discrete
+    folder (could be used to save images/csv, not yet implemented)
+
+    Returns
+    -------
+    per weekday plots of charging power and energy demand with relating quantiles
+    """
+
+    def unstack(df):
+        # unstack multiindex, sort weekdays and drop multiindex column
+        df = df.unstack(level=0)
+        df = df.sort_index(axis=1, key=lambda x: pd.Series(pd.Categorical(x, categories=days, ordered=True)))
+        df.columns = df.columns.droplevel(level=0)
+        return df
+
+    def plot_energy(df_list, days, df_list_qty):
+        fig = make_subplots(rows=2, cols=1, start_cell='top-left', subplot_titles=['Histogram', 'Statistical parameters'])
+        colors = ['#081F47', '#133561', '#22588C', '#327bab', '#669cc0', '#6D94AC', '#B8CCDE']
+        colors_qty = ['#038993', '#0F9B99', '#56BCB5', '#83CAC9']
+        names_qty = ['60% quantile', '80% quantile', 'average']
+
+        for df, day, color in zip(df_list, days, colors):
+            fig.add_trace(go.Histogram(x=df, histnorm='percent', name=day, marker_color=color, opacity=0.75),
+                          row=1, col=1)
+
+        for df_qty, color, name in zip(df_list_qty, colors_qty, names_qty):
+            df_qty = df_qty.sort_index(axis=0, key=lambda x: pd.Series(pd.Categorical(x, categories=days, ordered=True)))
+            fig.add_trace(go.Bar(x=df_qty.index, y=df_qty['energy_demand_site'], name=name, marker_color=color), row=2, col=1)
+
+        fig.update_layout(
+            title='Energy demand',
+            xaxis_title='Energy demand in kWh',
+            yaxis_title='Count (days)', yaxis2_title='Energy demand in kWh',
+            bargap=0.2,  # gap between bars of adjacent location coordinates
+            bargroupgap=0.1  # gap between bars of the same location coordinates
+        )
+
+        fig.show()
+
+    def plot_power(df_list, days):
+        fig = make_subplots(rows=2, cols=3, start_cell='top-left', subplot_titles=days)
+        names = ['average<br>(max_evs)', '60% quantile<br>(max_evs)', '40% quantile<br>(max_evs)', 'average', '60% quantile', '40% quantile']
+        colors = ['#327bab', '#22588C', '#133561', '#b8d5cd', '#8abaae', '#2e856e']
+        show_legend = ['legendonly', True, True, 'legendonly', True, True]
+        group_legend = ['group_soc', 'group_soc', 'group_soc', 'group_soc', 'group_soc', 'group_soc']
+        rows = [1, 1, 1, 2, 2, 2]
+        cols = [1, 2, 3, 1, 2, 3]
+        for day, row, col in zip(days, rows, cols):
+            for df, name, color, legend, group in zip(df_list, names, colors, show_legend, group_legend):
+                # iterate df
+                fig.add_trace(go.Scatter(x=df.index, y=df[day], line_shape='hv', fill='tozeroy', line_color=color,
+                                         name=name, visible=legend, legendgroup=name, showlegend=True if day == days[0] else False),
+                              row=row, col=col)
+        fig.update_layout(title='Charging power and max event-based power with quantiles in kW')
+
+        fig.show()
+
+    # Grouping site_discrete data
     site_discrete['day_name'] = site_discrete.index.day_name(locale=None)
     site_discrete['time'] = site_discrete.index.time
+    site_discrete['date'] = site_discrete.index.date
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    df_wkd = site_discrete.groupby(['day_name', 'time']).agg({'charge_power_site': 'mean',
-                                                              'total_energy_consumed_site': 'mean'})
-    df_wkd = df_wkd.reindex(days, level=0)
-    #df_wkd.index=df_wkd.index.to_flat_index()
-    df_wkd.to_csv(f'{PATH_OUTPUT}/{folder}/test.csv', sep=';', decimal=',', index=True)
+    power_quantile = [0.4, 0.6]
+    energy_quantile = [0.6, 0.8]
 
-    # plot
-    fig=px.line(df_wkd, x=df_wkd.index.get_level_values(1), y='total_energy_consumed_site')
-    fig.show()
+
+    df_wkd_power_avg = unstack(site_discrete.groupby(['day_name', 'time']).agg({'charge_power_site': lambda x: x.mean()/1000}))
+    [df_wkd_power_qty_40, df_wkd_power_qty_60] = [site_discrete.groupby(['day_name', 'time']).agg
+                                                  ({'charge_power_site': lambda x: x.quantile(i)/1000}) for i in power_quantile]  # [x>0]
+    [df_wkd_power_qty_40, df_wkd_power_qty_60] = [unstack(i) for i in [df_wkd_power_qty_40, df_wkd_power_qty_60]]
+
+    df_wkd_power_max_avg = unstack(site_discrete.groupby(['day_name', 'time']).agg({'evs_max': lambda x: x.mean() / 1000}))
+    [df_wkd_power_max_qty_40, df_wkd_power_max_qty_60] = [site_discrete.groupby(['day_name', 'time']).agg
+                                                          ({'evs_max': lambda x: x.quantile(i) / 1000}) for i in power_quantile]  # [x>0]
+    [df_wkd_power_max_qty_40, df_wkd_power_max_qty_60] = [unstack(i) for i in [df_wkd_power_max_qty_40, df_wkd_power_max_qty_60]]
+
+    df_wkd_energy = site_discrete.groupby('date').agg({'charge_power_site': lambda x: x.sum()/4/1000, 'day_name': 'first'})
+    df_wkd_energy.rename(columns={'charge_power_site': 'energy_demand_site'}, inplace=True)
+    df_wkd_energy_avg = df_wkd_energy.groupby('day_name').agg({'energy_demand_site': 'mean'})
+    df_wkd_energy_qty = [df_wkd_energy.groupby(['day_name']).agg({'energy_demand_site': lambda x: x.quantile(i)}) for i in energy_quantile]
+    df_wkd_energy_qty.append(df_wkd_energy_avg)
+
+    # calling plot functions
+    plot_power([df_wkd_power_max_avg,  df_wkd_power_max_qty_60, df_wkd_power_max_qty_40,
+                df_wkd_power_avg, df_wkd_power_qty_60, df_wkd_power_qty_40], days)
+    plot_energy([df_wkd_energy[df_wkd_energy['day_name'] == i]['energy_demand_site'] for i in days],
+                days, df_wkd_energy_qty)
+
 
 
 def prepare_discrete(path, folder):
@@ -1119,8 +1200,11 @@ def analyse_site(path, folder, resolution):
     site_event1 = prepare_event(path, folder, df_analyse)
     site_event2 = boxplot_Ladedauer(site_event1, df_analyse, folder)
 
-    # !!!
-    extract_garage_data(site_discrete1, folder)
+    ### Note ### boolean value garageExPost to be included in main.py to enable/disable
+    garageExPost = True
+    if garageExPost:
+        plot_garage_statistics(site_discrete1, folder)
+        
     show_graphs_site(site_discrete1, site_event2, df_analyse, df_simultaneity, df_days, folder, resolution)
 
     df_timeflex = timeflex(site_event2)
