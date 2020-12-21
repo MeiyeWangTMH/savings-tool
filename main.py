@@ -27,9 +27,9 @@ path =r'T:\Commercialization\06_projects\01_projects\202005 Masterarbeit Vincent
 #Setting up optional tool function
 #
 #Should the range of the data be adapted
-filter_time = True
+filter_time = False
 date_start = "2020-01-01"
-date_end   = "2020-03-01"
+date_end   = "2020-03-01" #this date will be first day to not be included
 
 #Input Parameter (static at the moment)
 #max power on site available for charging limited through ChargePilot [in W]
@@ -53,7 +53,8 @@ resolution = 15 # Resolution of interval in min
 #Create Optimization Input
 optimization = True
 
-
+#Analyzing data and create graphs and file output
+analyse = True
 
 #Main mehtod
 #Algorithm is split up in separate sections
@@ -79,7 +80,8 @@ add_site_data(path, folder, resolution, optimization)
 print("________________")
 print("")
 print("Start analyzing site...")
-analyse_site(path, folder, resolution)
+if analyse == True:
+    analyse_site(path, folder, resolution)
 print("________________")
 print("")
 print("All files are saved.")
