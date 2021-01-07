@@ -21,6 +21,7 @@ cols_site = ['meter_values_timestamp','charge_power', 'event_max',"L1_current","
 #optimization
 cols_site_opt =['meter_values_timestamp','power_trading_max_mw', 'soe_min_mwh','soe_max_mwh','power_actual_in_mw']
 
+#test soc
 
 #Functions
 def csv2df(file):
