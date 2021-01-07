@@ -22,7 +22,7 @@ from analyse import*
 PATH_INPUT = 'data/input'
 PATH_OUTPUT = 'data/output'
 
-path =r'T:\Commercialization\06_projects\01_projects\202005 Masterarbeit Vincent Barthel\02 Data & Analysis\02 Script'
+path =r'C:\Users\Lap\Documents\tmh-site-data-preprocessing'
 
 #Setting up optional tool function
 #
@@ -51,10 +51,10 @@ minimum_energy = 100.0          # in Wh
 resolution = 15 # Resolution of interval in min
 
 #Create Optimization Input
-optimization = True
+optimization = False
 
 #Analyzing data and create graphs and file output
-analyse = True
+analyse = False
 
 #Main mehtod
 #Algorithm is split up in separate sections

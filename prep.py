@@ -83,10 +83,10 @@ def error_wrong_events(df_event):
 
 def format_timestamp(df):
     df['meter_values_timestamp'] = pd.to_datetime(df['meter_values_timestamp'], errors = 'coerce')
-    df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_convert('Europe/Berlin')
+    df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_convert('UTC')
     df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_localize(None)
     df['plugin_time'] = pd.to_datetime(df['plugin_time'], utc = True)
-    df['plugin_time'] = df['plugin_time'].dt.tz_convert('Europe/Berlin')
+    df['plugin_time'] = df['plugin_time'].dt.tz_convert('UTC')
     df['plugin_time'] = df['plugin_time'].dt.tz_localize(None)
     df['plugin_time'] = df['plugin_time'].dt.strftime("%Y-%m-%d %H:%M:%S")
     df['plugin_time'] = pd.to_datetime(df['plugin_time'])
@@ -119,12 +119,12 @@ def reduce_plugin(df):
 
 def delete_columns(df):
     #delete parameters not required
-    del df['action'], df['rfid']
+    del df['action']
     #delete bidirectional parameters
     del (df['discharge_capability'], df['discharge_current'], df['discharge_power'],
     df['total_energy_produced'], df['discharge_offer'], df['session_energy_produced'])
     #deleted parameters, which could be interesting for the future
-    del df['soc'], df['start_charging_time']
+    del df['start_charging_time']
     del df['charge_capability']
     return df
 
@@ -273,9 +273,9 @@ def df_event_creation(df,site_max,charger_max):
     Create dataframe df_event, which contains all plugin events
     """
     print('Identify charging events...')
-    df_event = pd.DataFrame(columns=['id','charger_id','charge_point_id','connector_id','plugin_time','plugout_time',
-                                     'plugin_duration','charging_duration','max charge_power','mean charge_power event',
-                                     'mean charge_power charging','session_energy_consumed','charger_max','site_max',
+    df_event = pd.DataFrame(columns=['id','charger_id','charge_point_id','connector_id','rfid','plugin_time','plugout_time',
+                                     'plugin_duration','charging_time_start','charging_time_stop','charging_duration','max charge_power','mean charge_power event',
+                                     'mean charge_power charging','session_energy_consumed','soc','charger_max','site_max',
                                      'ev_suspended', 'first energy'])
 
     #Filling the data for each event
@@ -310,6 +310,42 @@ def df_event_creation(df,site_max,charger_max):
         
         sum_charging2 = df_sub2['diff'].sum()
         mean_power = df_sub2['charge_power'].mean()
+
+        if df_event.loc[x, 'id'] == item:
+            df_event.loc[x, 'plugin_time']= df_sub['plugin_time'].min()
+            df_event.loc[x, 'plugout_time'] = df_sub['meter_values_timestamp'].max()
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
         
         df_event['mean charge_power charging'] = np.where(df_event['id']==item, mean_power, 
                                                             df_event['mean charge_power charging'])
