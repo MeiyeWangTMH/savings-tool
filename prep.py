@@ -21,8 +21,6 @@ cols_site = ['meter_values_timestamp','charge_power', 'event_max',"L1_current","
 #optimization
 cols_site_opt =['meter_values_timestamp','power_trading_max_mw', 'soe_min_mwh','soe_max_mwh','power_actual_in_mw']
 
-#test soc
-
 #Functions
 def csv2df(file):
     df = pd.read_csv(file, delimiter = ";",decimal = ",", doublequote = True , encoding = "utf-8" )
@@ -82,12 +80,12 @@ def error_wrong_events(df_event):
 
     print('Ratio correct events: ' + str(ratio) + '%')
 
-def format_timestamp(df):
+def format_timestamp(df, timezone):
     df['meter_values_timestamp'] = pd.to_datetime(df['meter_values_timestamp'], errors = 'coerce')
-    df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_convert('UTC')
+    df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_convert(timezone)
     df['meter_values_timestamp'] = df['meter_values_timestamp'].dt.tz_localize(None)
     df['plugin_time'] = pd.to_datetime(df['plugin_time'], utc = True)
-    df['plugin_time'] = df['plugin_time'].dt.tz_convert('UTC')
+    df['plugin_time'] = df['plugin_time'].dt.tz_convert(timezone)
     df['plugin_time'] = df['plugin_time'].dt.tz_localize(None)
     df['plugin_time'] = df['plugin_time'].dt.strftime("%Y-%m-%d %H:%M:%S")
     df['plugin_time'] = pd.to_datetime(df['plugin_time'])
@@ -240,11 +238,11 @@ def session_energy_calculated(df):
     return df
     
 
-def prepare_df(df,site_max,charger_max):
+def prepare_df(df,site_max,charger_max,timezone):
     """
     Combines all prepare functions
     """
-    df = format_timestamp(df)
+    df = format_timestamp(df, timezone)
     df = delete_columns(df)
     df = transform_current(df)
     df = add_sitedata(df,site_max,charger_max)
@@ -276,7 +274,7 @@ def df_event_creation(df,site_max,charger_max):
     print('Identify charging events...')
     df_event = pd.DataFrame(columns=['id','charger_id','charge_point_id','connector_id','rfid','plugin_time','plugout_time',
                                      'plugin_duration','charging_time_start','charging_time_stop','charging_duration','max charge_power','mean charge_power event',
-                                     'mean charge_power charging','session_energy_consumed','soc','charger_max','site_max',
+                                     'mean charge_power charging','session_energy_consumed','soc_start','soc_stop','charger_max','site_max',
                                      'ev_suspended', 'first energy'])
 
     #Filling the data for each event
@@ -289,6 +287,7 @@ def df_event_creation(df,site_max,charger_max):
         df.groupby(df['id'])['session_energy_consumed'].min()
         df_event['charger_id']=np.where(df_event['id']==item,df_sub.charger_id.max(),df_event['charger_id'])
         df_event['connector_id']=np.where(df_event['id']==item,df_sub.connector_id.max(),df_event['connector_id'])
+        df_event['rfid'] = np.where(df_event['id'] == item, df_sub.rfid.max(), df_event['rfid'])
         df_event['charge_point_id']=np.where(df_event['id']==item,df_sub.charge_point_id.max(),df_event['charge_point_id'])
         df_event['max charge_power']=np.where(df_event['id']==item,df_sub.charge_power.max(),df_event['max charge_power'])
         df_event['session_energy_consumed']=np.where(df_event['id']==item,df_sub.session_energy_consumed.max(),
@@ -296,6 +295,10 @@ def df_event_creation(df,site_max,charger_max):
         df_event['first energy']=np.where(df_event['id']==item,df_sub.session_energy_consumed.min(),df_event['first energy'])
         df_sub = df_sub.sort_values('meter_values_timestamp')
         df_event['ev_suspended']=np.where(df_event['id']==item,df_sub['ev_suspended'].iloc[-1],df_event['ev_suspended'])
+        df_event['soc_start'] = np.where(df_event['id'] == item, df_sub['soc'].iloc[0],
+                                        df_event['soc_start'])
+        df_event['soc_stop'] = np.where(df_event['id'] == item, df_sub['soc'].iloc[-1],
+                                            df_event['soc_stop'])
 
     
     #Calculate plugin_ & plugout_time (np.where doesn't work - dtype-Problems!)
@@ -308,13 +311,19 @@ def df_event_creation(df,site_max,charger_max):
         df_sub['timestamp_shift'] = df_sub['meter_values_timestamp'].shift()
         df_sub['diff'] = df_sub['meter_values_timestamp'] - df_sub['timestamp_shift']
         df_sub2 = df_sub[df_sub['charge_power']>100]
-        
+
+        df_event['ev_suspended'] = np.where(df_event['id'] == item, df_sub['ev_suspended'].iloc[-1],
+                                            df_event['ev_suspended'])
+
         sum_charging2 = df_sub2['diff'].sum()
         mean_power = df_sub2['charge_power'].mean()
 
         if df_event.loc[x, 'id'] == item:
             df_event.loc[x, 'plugin_time']= df_sub['plugin_time'].min()
             df_event.loc[x, 'plugout_time'] = df_sub['meter_values_timestamp'].max()
+            if len(df_sub2) > 0:
+                df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min() - df_sub2['diff'].iloc[0]
+            df_event.loc[x, 'charging_time_stop'] = df_sub2['meter_values_timestamp'].max()
             
             
             
@@ -342,9 +351,7 @@ def df_event_creation(df,site_max,charger_max):
             
             
             
-            
-            
-            
+
             
             
         
@@ -448,6 +455,7 @@ def resample_data(df,resolution):
                                                                                       'status':'last',
                                                                                       'total_energy_consumed':'last',
                                                                                       'total_energy_consumed_reset': 'sum',
+                                                                                      'soc':'last',
                                                                                       'transaction_ongoing':'last',
                                                                                       'event_max':'last',
                                                                                       'charger_max':'last',
@@ -507,6 +515,9 @@ def filling_data(df2, resolution):
     #Filling power
     df2['charge_power'] = df2['total_energy_consumed_reset'] * (60 / resolution)
     df2['charge_power'] = df2['charge_power'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
+
+    #Filling soc
+    df2['soc'] = df2['soc'].ffill()
 
     #Filling station
     df2['charger_id'] = df2['charger_id'].ffill()
@@ -809,7 +820,7 @@ def optimization_input_site(path,folder,optimization,resolution):
     return
 
 
-def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData):
+def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone):
     """
     Combines all function and loop to perform data preparation for all available charge points in the output folder
     """
@@ -822,7 +833,7 @@ def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_
         print(charge_point[:-4])
         print("")
         df = csv2df(file)
-        df = prepare_df(df,site_max,charger_max)
+        df = prepare_df(df,site_max,charger_max,timezone)
 
         df_event = df_event_creation(df,site_max,charger_max)
 
