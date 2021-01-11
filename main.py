@@ -25,7 +25,7 @@ PATH_OUTPUT = 'data/output'
 path =r'C:\Users\Lap\Documents\tmh-site-data-preprocessing'
 
 #Setting up optional tool function
-#
+
 #Should the range of the data be adapted
 filter_time = False
 date_start = "2020-01-01"
@@ -36,6 +36,9 @@ date_end   = "2020-03-01" #this date will be first day to not be included
 site_max = 31868
 #max power of the charger [in W]
 charger_max = 11200
+
+#timezone
+timezone = 'UTC' #options e.g. : 'UTC' or 'Europe/Berlin'
 
 #Revising the data - Should missing Logs be callucalted (y/n)
 reviseData = True
@@ -69,7 +72,7 @@ folder = master(path,filter_time, date_start, date_end)
 print("________________")
 print("")
 print("Start data preparation for single charge point...")
-data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData)
+data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone)
 optimization_input_cp(path,folder,optimization)
 
 #Aggregate all to site data
