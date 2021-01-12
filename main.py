@@ -7,15 +7,15 @@ import yaml
 import glob
 import dateutil.parser
 from datetime import timezone, datetime, timedelta
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from genpy import tmh_style
 import time
 import os
 
 from extract import *
 from prep import *
-from analyse import*
+try:
+    from analyse import*
+except:
+    pass
 
 #Input paths
 
@@ -27,7 +27,7 @@ path =r'C:\Users\Lap\Documents\tmh-site-data-preprocessing'
 #Setting up optional tool function
 
 #Should the range of the data be adapted
-filter_time = False
+filter_time = False #Not applied if false
 date_start = "2020-01-01"
 date_end   = "2020-03-01" #this date will be first day to not be included
 
@@ -40,10 +40,10 @@ charger_max = 11200
 #timezone
 timezone = 'UTC' #options e.g. : 'UTC' or 'Europe/Berlin'
 
-#Revising the data - Should missing Logs be callucalted (y/n)
+#Revising the data - Should missing Logs be calculated #Not applied if false
 reviseData = True
 
-#Cleaning up the data - Should data be cleaned (y/n)
+#Cleaning up the data - Should data be cleaned #Not applied if false
 cleanData = True
 #Delete all charging events, who do not exceed these limits:
 minimum_plugin_duration = 5.0   # in Min
@@ -54,10 +54,10 @@ minimum_energy = 100.0          # in Wh
 resolution = 15 # Resolution of interval in min
 
 #Create Optimization Input
-optimization = False
+optimization = False #Not applied if false
 
 #Analyzing data and create graphs and file output
-analyse = False
+analyse = False #Not applied if false
 
 #Main mehtod
 #Algorithm is split up in separate sections

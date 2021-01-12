@@ -321,8 +321,15 @@ def df_event_creation(df,site_max,charger_max):
         if df_event.loc[x, 'id'] == item:
             df_event.loc[x, 'plugin_time']= df_sub['plugin_time'].min()
             df_event.loc[x, 'plugout_time'] = df_sub['meter_values_timestamp'].max()
-            if len(df_sub2) > 0:
-                df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min() - df_sub2['diff'].iloc[0]
+            df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min()
+            #if len(df_sub2) > 0:
+            #    if df_sub2['meter_values_timestamp'].min() != df_sub2['diff'].iloc[0]:
+            #        if df_sub2['diff'].iloc[0].isnull():
+            #            df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min()
+            #    else:
+            #        df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min() - \
+            #                                                 df_sub2['diff'].iloc[0]
+
             df_event.loc[x, 'charging_time_stop'] = df_sub2['meter_values_timestamp'].max()
             
             
@@ -390,6 +397,7 @@ def df_event_creation(df,site_max,charger_max):
     #Cross-check session_energy_consumed: Determine whether charged energy volumne can be met with given charge power
     df_event['mean charge_power charging'] = df_event['mean charge_power charging'].fillna(0)
     df_event['energy_calculated'] = df_event['charging_duration [h]'] * df_event['mean charge_power charging']
+    del df_event['charging_duration [h]']
 
     #Allow 5% deviation
     df_event['cross_check_energy 5%'] = df_event['session_energy_consumed'].between((df_event['energy_calculated']*0.95),
@@ -739,6 +747,7 @@ def optimization_input_cp(path,folder,optimization):
 
             #Save optimization file
             charge_point = file.rsplit('\\', 1)[-1]
+            charge_point = file.rsplit('/', 1)[-1] #Mac: '/' instead of '\\'
             charge_point = charge_point[:-12]
             df_opt.to_csv(f'{PATH_OUTPUT}/{folder}/' + charge_point + 'optimisation.csv', sep=';', decimal=",",
                           index=True)
@@ -830,6 +839,7 @@ def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_
     for file in files:
         print("")
         charge_point = file.rsplit('\\', 1)[-1]
+        charge_point = file.rsplit('/', 1)[-1]  # Mac: '/' instead of '\\'
         print(charge_point[:-4])
         print("")
         df = csv2df(file)

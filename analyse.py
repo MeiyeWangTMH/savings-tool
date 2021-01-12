@@ -15,6 +15,7 @@ from curlyBrace import curlyBrace
 import locale
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from genpy import tmh_style
 
 #Input paths
 PATH_INPUT = 'data/input'
