@@ -1,21 +1,16 @@
 #Import libraries
-import csv
 import pandas as pd
 from pandas import *
 import numpy as np
-import yaml
 import glob
-import dateutil.parser
-import math
 from datetime import timezone, datetime, timedelta
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from curlyBrace import curlyBrace
-import locale
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from genpy import tmh_style
+#from genpy import tmh_style
 
 #Input paths
 PATH_INPUT = 'data/input'
