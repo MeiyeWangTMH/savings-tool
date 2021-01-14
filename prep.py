@@ -321,47 +321,17 @@ def df_event_creation(df,site_max,charger_max):
         if df_event.loc[x, 'id'] == item:
             df_event.loc[x, 'plugin_time']= df_sub['plugin_time'].min()
             df_event.loc[x, 'plugout_time'] = df_sub['meter_values_timestamp'].max()
-            df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min()
-            #if len(df_sub2) > 0:
-            #    if df_sub2['meter_values_timestamp'].min() != df_sub2['diff'].iloc[0]:
-            #        if df_sub2['diff'].iloc[0].isnull():
-            #            df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min()
-            #    else:
-            #        df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min() - \
-            #                                                 df_sub2['diff'].iloc[0]
+            df_event.loc[x, 'charging_time_start'] = df_sub2['timestamp_shift'].min()
+            if len(df_sub2) > 0:
+                if pd.isnull(df_sub2['timestamp_shift'].min()):
+                    df_event.loc[x, 'charging_time_start'] = df_sub2['meter_values_timestamp'].min()
+
+                else:
+                    df_event.loc[x, 'charging_time_start'] = df_sub2['timestamp_shift'].min()
 
             df_event.loc[x, 'charging_time_stop'] = df_sub2['meter_values_timestamp'].max()
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
 
-            
-            
-        
         df_event['mean charge_power charging'] = np.where(df_event['id']==item, mean_power, 
                                                             df_event['mean charge_power charging'])
         #(np.where doesn't work - dtype-Problems!)
