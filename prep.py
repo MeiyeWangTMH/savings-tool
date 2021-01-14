@@ -7,9 +7,7 @@ import yaml
 import glob
 import dateutil.parser
 from datetime import timezone, datetime, timedelta
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from genpy import tmh_style
+
 
 #Input paths
 PATH_INPUT = 'data/input'

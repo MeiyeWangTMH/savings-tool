@@ -44,14 +44,14 @@ timezone = 'UTC' #options e.g. : 'UTC' or 'Europe/Berlin'
 reviseData = True
 
 #Cleaning up the data - Should data be cleaned #Not applied if false
-cleanData = True
+cleanData = False
 #Delete all charging events, who do not exceed these limits:
 minimum_plugin_duration = 5.0   # in Min
 minimum_charge_power = 100.0      # in W
 minimum_energy = 100.0          # in Wh
 
 #Creation discrete data
-resolution = 15 # Resolution of interval in min
+resolution = 15 #Resolution of interval in min
 
 #Create Optimization Input
 optimization = False #Not applied if false
@@ -80,10 +80,10 @@ print("________________")
 print("")
 print("Start data preparation for site...")
 add_site_data(path, folder, resolution, optimization)
-print("________________")
-print("")
-print("Start analyzing site...")
 if analyse == True:
+    print("________________")
+    print("")
+    print("Start analyzing site...")
     analyse_site(path, folder, resolution)
 print("________________")
 print("")
