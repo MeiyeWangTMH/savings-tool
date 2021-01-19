@@ -430,7 +430,7 @@ def resample_data(df,resolution):
                                                                                       'total_energy_consumed_reset': 'sum',
                                                                                       'soc':'last',
                                                                                       'transaction_ongoing':'last',
-                                                                                      'event_max':'last',
+                                                                                      'event_max':'max',
                                                                                       'charger_max':'last',
                                                                                       'site_max':'last'})
 
