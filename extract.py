@@ -32,26 +32,35 @@ def read_input(path):
         df["override_max_limit"] = pd.to_numeric(df["override_max_limit"], errors = 'coerce')
 
     #Removing the unnecessary last two columns to decrease the size of the dataframe
-    if 'total_power' in df.columns:
-        df.drop('total_power', axis=1, inplace=True)
+    #if 'total_power' in df.columns:
+    #    df.drop('total_power', axis=1, inplace=True)
     if 'total_unmanaged_power' in df.columns:
         df.drop('total_unmanaged_power', axis=1, inplace=True)
-    if 'override_max_limit' in df.columns:
-        df.drop('override_max_limit', axis=1, inplace=True)
+    #if 'override_max_limit' in df.columns:
+    #    df.drop('override_max_limit', axis=1, inplace=True)
     
     #filerting the data
     df1 = df[df['evs'] != '[]']
     df1 = df1[df1['evs'].notna()]
     df1 = df1[df1['evs'] != 'evs']
 
+    df1 = df1.reset_index(drop=True)
+
     return df1
 
 def extraction(df):
     """
-    In the raw data, extracts the tupel in the field "evs"
+    In the raw data, extracts the tuple in the field "evs"
     """
     print("Extract column '"'evs'"''...")
     e = [yaml.load(x, Loader = yaml.FullLoader) for x in df['evs']]
+    e = [pd.DataFrame(yaml.load(x, Loader=yaml.FullLoader)) for x in df['evs']]
+
+    for i in range(len(e)):
+        e[i] = pd.DataFrame(e[i])
+        e[i]['gridlimit_kW'] = df.loc[i, 'override_max_limit']
+        e[i]['total_power_site'] = df.loc[i, 'total_power']
+
     return e
 
 def range_of_data(df,date_start,date_end):
@@ -64,7 +73,11 @@ def range_of_data(df,date_start,date_end):
     return df1
 
 def merge_stationen(e):
-    stationen = pd.concat([pd.DataFrame(item) for item in e])
+    stationen = pd.concat([item for item in e])
+
+    #Convert gridlimit from Ampere to kW
+    stationen['gridlimit_kW'] = pd.to_numeric(stationen['gridlimit_kW'])
+    stationen['gridlimit_kW'] = stationen['gridlimit_kW']/1000*230*3
     return stationen
 
 def create_cp_id(stationen):
