@@ -23,12 +23,6 @@ filter_time = False #Not applied if false
 date_start = "2020-01-01"
 date_end   = "2020-03-01" #this date will be first day to not be included
 
-#Input Parameter (static at the moment)
-#max power on site available for charging limited through ChargePilot [in W]
-site_max = 31868
-#max power of the charger [in W]
-charger_max = 11200
-
 #timezone
 timezone = 'Europe/Berlin' #options e.g. : 'UTC' or 'Europe/Berlin'
 
@@ -43,7 +37,7 @@ minimum_charge_power = 100.0      # in W
 minimum_energy = 100.0          # in Wh
 
 #Creation discrete data
-resolution = 1 #Resolution of interval in min
+resolution = 15 #Resolution of interval in min
 
 #Create Optimization Input
 optimization = False #Not applied if false
