@@ -14,7 +14,7 @@ except:
 PATH_INPUT = 'data/input'
 PATH_OUTPUT = 'data/output'
 
-path =r'C:\Users\Lap\Documents\tmh-site-data-preprocessing'
+path =r'C:\Users\Lap\OneDrive - The Mobility House GmbH\Dokumente\tmh-site-data-preprocessing'
 
 #Setting up optional tool function
 
@@ -23,17 +23,11 @@ filter_time = False #Not applied if false
 date_start = "2020-01-01"
 date_end   = "2020-03-01" #this date will be first day to not be included
 
-#Input Parameter (static at the moment)
-#max power on site available for charging limited through ChargePilot [in W]
-site_max = 31868
-#max power of the charger [in W]
-charger_max = 11200
-
 #timezone
-timezone = 'UTC' #options e.g. : 'UTC' or 'Europe/Berlin'
+timezone = 'Europe/Berlin' #options e.g. : 'UTC' or 'Europe/Berlin'
 
 #Revising the data - Should missing Logs be calculated #Not applied if false
-reviseData = True
+reviseData = False
 
 #Cleaning up the data - Should data be cleaned #Not applied if false
 cleanData = False
@@ -64,7 +58,7 @@ folder = master(path,filter_time, date_start, date_end)
 print("________________")
 print("")
 print("Start data preparation for single charge point...")
-data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone)
+data_preparation(path,folder,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone)
 optimization_input_cp(path,folder,optimization)
 
 #Aggregate all to site data

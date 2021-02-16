@@ -12,14 +12,17 @@ PATH_OUTPUT = 'data/output'
 
 #Selection, which parameter should be maintainend on the site level (Additional adaption in function necessary)
 #discrete
-cols_site = ['meter_values_timestamp','charge_power', 'event_max',"L1_current","L2_current","L3_current","L1_offer","L2_offer","L3_offer", "total_energy_consumed_reset"]
+cols_site = ['meter_values_timestamp','charge_power', 'event_max',"L1_current","L2_current","L3_current","L1_offer","L2_offer","L3_offer", "total_energy_consumed_reset",'total_power_site','gridlimit_kW']
 #optimization
 cols_site_opt =['meter_values_timestamp','power_trading_max_mw', 'soe_min_mwh','soe_max_mwh','power_actual_in_mw']
 
 #Functions
 def csv2df(file):
     df = pd.read_csv(file, delimiter = ";",decimal = ",", doublequote = True , encoding = "utf-8" )
-    
+
+    df['total_power_site'] = pd.to_numeric(df['total_power_site'])
+    df['gridlimit_kW'] = pd.to_numeric(df['gridlimit_kW'])
+
     ids = df['id'].nunique()
     pts = df['plugin_time'].nunique()
 
@@ -154,13 +157,6 @@ def transform_current(df):
     del df2['charge_offer']
     return df2
 
-def add_sitedata(df,site_max,charger_max):
-    """
-    Create columns for site, charger and event max charging power (static so far)
-    """
-    df.loc[:,'site_max']=site_max
-    df.loc[:,'charger_max']=charger_max
-    return df
     
 def event_max(df):
     """
@@ -233,14 +229,13 @@ def session_energy_calculated(df):
     return df
     
 
-def prepare_df(df,site_max,charger_max,timezone):
+def prepare_df(df,timezone):
     """
     Combines all prepare functions
     """
     df = format_timestamp(df, timezone)
     df = delete_columns(df)
     df = transform_current(df)
-    df = add_sitedata(df,site_max,charger_max)
     df = delete_zero_total_energy(df)
     #df = delete_zero_ids(df)
 
@@ -262,14 +257,14 @@ def prepare_df(df,site_max,charger_max,timezone):
 
     return df
 
-def df_event_creation(df,site_max,charger_max):
+def df_event_creation(df):
     """
     Create dataframe df_event, which contains all plugin events
     """
     print('Identify charging events...')
     df_event = pd.DataFrame(columns=['id','charger_id','charge_point_id','connector_id','rfid','plugin_time','plugout_time',
                                      'plugin_duration','charging_time_start','charging_time_stop','charging_duration','max charge_power','mean charge_power event',
-                                     'mean charge_power charging','session_energy_consumed','soc_start','soc_stop','charger_max','site_max',
+                                     'mean charge_power charging','session_energy_consumed','soc_start','soc_stop','gridlimit_kW',
                                      'ev_suspended', 'first energy'])
 
     #Filling the data for each event
@@ -287,6 +282,8 @@ def df_event_creation(df,site_max,charger_max):
         df_event['max charge_power']=np.where(df_event['id']==item,df_sub.charge_power.max(),df_event['max charge_power'])
         df_event['session_energy_consumed']=np.where(df_event['id']==item,df_sub.session_energy_consumed.max(),
                                                      df_event['session_energy_consumed'])
+        df_event['gridlimit_kW'] = np.where(df_event['id'] == item, df_sub.gridlimit_kW.max(),
+                                                       df_event['gridlimit_kW'])
         df_event['first energy']=np.where(df_event['id']==item,df_sub.session_energy_consumed.min(),df_event['first energy'])
         df_sub = df_sub.sort_values('meter_values_timestamp')
         df_event['ev_suspended']=np.where(df_event['id']==item,df_sub['ev_suspended'].iloc[-1],df_event['ev_suspended'])
@@ -343,9 +340,6 @@ def df_event_creation(df,site_max,charger_max):
     #Calculate plugin duration
     df_event['plugin_duration']= df_event['plugout_time']- df_event['plugin_time']
 
-    #Add Site-specific Data
-    df_event['charger_max']=charger_max
-    df_event['site_max']=site_max
     
     #Calculate charging duration in %
     df_event['charge_duration [%]'] = (df_event['charging_duration']/df_event['plugin_duration'])*100
@@ -431,8 +425,8 @@ def resample_data(df,resolution):
                                                                                       'soc':'last',
                                                                                       'transaction_ongoing':'last',
                                                                                       'event_max':'max',
-                                                                                      'charger_max':'last',
-                                                                                      'site_max':'last'})
+                                                                                      'total_power_site':'mean',
+                                                                                      'gridlimit_kW':'max'})
 
     return df2
 
@@ -457,11 +451,11 @@ def filling_data(df2, resolution):
     #Filling event_max
     df2['event_max'] = df2['event_max'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
 
-    #Filling charger_max
-    df2['charger_max'] = df2['charger_max'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
+    #Filling total_power_site
+    df2['total_power_site'] = df2['total_power_site'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
 
-    #Filling site_max
-    df2['site_max'] = df2['site_max'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
+    #Filling gridlimit
+    df2['gridlimit_kW'] = df2['gridlimit_kW'].groupby(g).ffill().astype(float, errors = 'ignore')
 
     #Filling charge_current
     df2['L1_current'] = df2['L1_current'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
@@ -486,7 +480,7 @@ def filling_data(df2, resolution):
 
 
     #Filling power
-    df2['charge_power'] = df2['total_energy_consumed_reset'] * (60 / resolution)
+    #df2['charge_power'] = df2['total_energy_consumed_reset'] * (60 / resolution)
     df2['charge_power'] = df2['charge_power'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
 
     #Filling soc
@@ -542,16 +536,11 @@ def revised_df(df,resolution):
     df2['event_max2'] = df2['event_max'].mask((df2['event_max'] == 0) & (df2['plugin_time2'].notna()), event_replace)
     df2['event_max2'] = df2['event_max2'].bfill()
 
-    # Filling charger_max
-    charger_replace = df2['charger_max'].replace(0, np.nan)
-    df2['charger_max2'] = df2['charger_max'].mask((df2['charger_max'] == 0) & (df2['plugin_time2'].notna()),
+    # Filling gridlimit
+    gridlimit_replace = df2['gridlimit_kW'].replace(0, np.nan)
+    df2['gridlimit_kW2'] = df2['gridlimit_kW'].mask((df2['gridlimit_kW'] == 0) & (df2['plugin_time2'].notna()),
                                                   charger_replace)
-    df2['charger_max2'] = df2['charger_max2'].bfill()
-
-    # Filling site_max
-    site_replace = df2['site_max'].replace(0, np.nan)
-    df2['site_max2'] = df2['site_max'].mask((df2['site_max'] == 0) & (df2['plugin_time2'].notna()), site_replace)
-    df2['site_max2'] = df2['site_max2'].bfill()
+    df2['gridlimit_kW2'] = df2['gridlimit_kW2'].bfill()
 
     # Filling session_energy_consumed linear (two steps are needed)
     df2['session_energy_consumed2'] = df2['session_energy_consumed'].mask(
@@ -578,18 +567,18 @@ def revised_df(df,resolution):
 
     # Re-change the columns after calculating the missing values
     df2[['charge_power', 'session_energy_consumed', 'total_energy_consumed', 'total_energy_consumed_reset', 'plugin_time', 'id',
-         'event_max', 'charger_max', 'site_max',
+         'event_max', 'total_power_site', 'gridlimit_kW',
          'charger_id', 'ev_suspended', 'status', 'transaction_ongoing',
          'L1_current', 'L2_current', 'L3_current', 'L1_offer', 'L2_offer', 'L3_offer']] = df2[
         ['charge_power2', 'session_energy_consumed4', 'total_energy_consumed', 'total_energy_consumed_reset', 'plugin_time2', 'id2',
-         'event_max2', 'charger_max2', 'site_max2',
+         'event_max2', 'total_power_site', 'gridlimit_kW2',
          'charger_id', 'ev_suspended2', 'status2', 'transaction_ongoing2',
          'L1_current', 'L2_current', 'L3_current', 'L1_offer', 'L2_offer', 'L3_offer']]
 
     # drop columns which are no longer needed
     df2.drop(['charge_power2', 'session_energy_consumed4', 'session_energy_consumed3', 'session_energy_consumed2',
               'plugin_time2', 'id2',
-              'event_max2', 'charger_max2', 'site_max2',
+              'event_max2', 'gridlimit_kW2',
               'ev_suspended2', 'status2', 'transaction_ongoing2'], axis=1, inplace=True)
 
     return df2
@@ -708,7 +697,7 @@ def optimization_input_cp(path,folder,optimization):
 
             df_opt = df_opt[['time', 't_index', 'trading_active', 'power_trading_max_mw', 'soe_min_mwh', 'soe_max_mwh',
                              'charge_point_id', 'id', 'plugin_time', 'session_energy_consumed', 'total_energy_consumed',
-                             'event_max', 'charger_max', 'site_max', 'power_actual_in_mw']]
+                             'event_max', 'total_power_site','gridlimit_kW', 'power_actual_in_mw']]
 
             #Save optimization file
             charge_point = file.rsplit('\\', 1)[-1]
@@ -794,7 +783,7 @@ def optimization_input_site(path,folder,optimization,resolution):
     return
 
 
-def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone):
+def data_preparation(path,folder,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone):
     """
     Combines all function and loop to perform data preparation for all available charge points in the output folder
     """
@@ -808,14 +797,14 @@ def data_preparation(path,folder, site_max,charger_max,cleanData,minimum_charge_
         print(charge_point[:-4])
         print("")
         df = csv2df(file)
-        df = prepare_df(df,site_max,charger_max,timezone)
+        df = prepare_df(df,timezone)
 
-        df_event = df_event_creation(df,site_max,charger_max)
+        df_event = df_event_creation(df)
 
         #Cleaning data (optional)
         if cleanData == True:
             df2 = clean_original(df,df_event,minimum_charge_power,minimum_plugin_duration,minimum_energy)
-            df_event2 = df_event_creation(df2,site_max,charger_max)
+            df_event2 = df_event_creation(df2)
             df3 = discrete_df(df2, resolution, reviseData)
             error_duplicated_logs(df3)
         else:
@@ -865,7 +854,7 @@ def add_site_data_discrete(path, folder, resolution):
         df_all = dct_df_concat[key+1].copy()
         key = key +1
     # rename columns of df_data
-    df_all.columns = ['meter_values_timestamp','charge_power_site', 'evs_max', 'L1_current_site', 'L2_current_site', 'L3_current_site','L1_offer_site', 'L2_offer_site', 'L3_offer_site', "total_energy_consumed_site"]
+    df_all.columns = ['meter_values_timestamp','charge_power_site', 'evs_max', 'L1_current_site', 'L2_current_site', 'L3_current_site','L1_offer_site', 'L2_offer_site', 'L3_offer_site', "total_energy_consumed_site",'total_power_site','gridlimit_kW']
     df_all.set_index('meter_values_timestamp', inplace=True)
 
     df_all['active_charge_points'] = 0
@@ -881,7 +870,9 @@ def add_site_data_discrete(path, folder, resolution):
                                                                                       'charge_power_site':'mean',
                                                          'evs_max':'mean',
                                                          'total_energy_consumed_site':'last',
-                                                         'active_charge_points':'mean',})
+                                                         'total_power_site':'mean',
+                                                         'gridlimit_kW':'mean',
+                                                         'active_charge_points':'mean'})
 
 
     #Filling the completed timeseries
@@ -908,7 +899,6 @@ def add_site_data_discrete(path, folder, resolution):
     # Filling power
     df_all['active_charge_points'] = df_all['active_charge_points'].fillna(0).astype(float, errors='ignore')
 
-
     #Total energy consumed cumsum
     df_all['total_energy_consumed_site'] = df_all['total_energy_consumed_site'].cumsum()
 
@@ -933,8 +923,21 @@ def add_site_data_discrete(path, folder, resolution):
 
         cp = cp + 1
 
+    #Recalculate parameter for site level
+    df_all['gridlimit_kW'] =  df_all['gridlimit_kW']/df_all['active_charge_points']
+    df_all['total_power_site']  =   df_all['total_power_site']/df_all['active_charge_points']
+
+    # Filling power (measured data)
+    df_all['total_power_site'] = df_all['total_power_site'].fillna(0).astype(float, errors='ignore')
+
+    # Filling power (measured data)
+    df_all['gridlimit_kW'] = df_all['gridlimit_kW'].ffill().astype(float, errors='ignore')
+
     # save site file
     df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_discrete.csv', sep = ';', decimal = ',', index = True)
+
+    # drop columns which are no longer needed
+    df_all.drop(['gridlimit_kW','total_power_site'], axis=1, inplace=True)
 
     # add total values to single charge point files
     key=0
@@ -946,7 +949,7 @@ def add_site_data_discrete(path, folder, resolution):
     # save data to csv
     i = 0
     for filename in filenames:
-        dct_df[i] = dct_df[i][['meter_values_timestamp','L1_current','L2_current','L3_current','L1_offer','L2_offer','L3_offer','charge_power','charger_id','connector_id','charge_point_id','ev_suspended','id','plugin_time','session_energy_consumed','total_energy_consumed','status','transaction_ongoing','event_max','charger_max','site_max','charge_power_site','L1_current_site','L2_current_site','L3_current_site','L1_offer_site','L2_offer_site','L3_offer_site']]
+        dct_df[i] = dct_df[i][['meter_values_timestamp','L1_current','L2_current','L3_current','L1_offer','L2_offer','L3_offer','charge_power','charger_id','connector_id','charge_point_id','ev_suspended','id','plugin_time','session_energy_consumed','total_energy_consumed','status','transaction_ongoing','event_max','total_power_site','gridlimit_kW','charge_power_site','L1_current_site','L2_current_site','L3_current_site','L1_offer_site','L2_offer_site','L3_offer_site']]
         dct_df[i].to_csv(filename, sep = ';', decimal = ',', index = False)
         i = i+1
 
