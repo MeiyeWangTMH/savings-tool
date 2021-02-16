@@ -53,11 +53,11 @@ def extraction(df):
     In the raw data, extracts the tuple in the field "evs"
     """
     print("Extract column '"'evs'"''...")
-    e = [yaml.load(x, Loader = yaml.FullLoader) for x in df['evs']]
+    #e = [yaml.load(x, Loader = yaml.FullLoader) for x in df['evs']]
     e = [pd.DataFrame(yaml.load(x, Loader=yaml.FullLoader)) for x in df['evs']]
 
     for i in range(len(e)):
-        e[i] = pd.DataFrame(e[i])
+        #e[i] = pd.DataFrame(e[i])
         e[i]['gridlimit_kW'] = df.loc[i, 'override_max_limit']
         e[i]['total_power_site'] = df.loc[i, 'total_power']
 
