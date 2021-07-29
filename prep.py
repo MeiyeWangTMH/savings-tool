@@ -18,10 +18,10 @@ cols_site_opt =['meter_values_timestamp','power_trading_max_mw', 'soe_min_mwh','
 
 #Functions
 def csv2df(file):
-    df = pd.read_csv(file, delimiter = ";",decimal = ",", doublequote = True , encoding = "utf-8" )
+    df = pd.read_csv(file, delimiter = ";",decimal = ".", doublequote = True , encoding = "utf-8" )
 
-    df['total_power_site'] = pd.to_numeric(df['total_power_site'])
-    df['gridlimit_kW'] = pd.to_numeric(df['gridlimit_kW'])
+    # df['total_power_site'] = pd.to_numeric(df['total_power_site'])
+    # df['gridlimit_kW'] = pd.to_numeric(df['gridlimit_kW'])
 
     ids = df['id'].nunique()
     pts = df['plugin_time'].nunique()
@@ -282,8 +282,8 @@ def df_event_creation(df):
         df_event['max charge_power']=np.where(df_event['id']==item,df_sub.charge_power.max(),df_event['max charge_power'])
         df_event['session_energy_consumed']=np.where(df_event['id']==item,df_sub.session_energy_consumed.max(),
                                                      df_event['session_energy_consumed'])
-        df_event['gridlimit_kW'] = np.where(df_event['id'] == item, df_sub.gridlimit_kW.max(),
-                                                       df_event['gridlimit_kW'])
+        # df_event['gridlimit_kW'] = np.where(df_event['id'] == item, df_sub.gridlimit_kW.max(),
+        #                                                df_event['gridlimit_kW'])
         df_event['first energy']=np.where(df_event['id']==item,df_sub.session_energy_consumed.min(),df_event['first energy'])
         df_sub = df_sub.sort_values('meter_values_timestamp')
         df_event['ev_suspended']=np.where(df_event['id']==item,df_sub['ev_suspended'].iloc[-1],df_event['ev_suspended'])
@@ -424,9 +424,11 @@ def resample_data(df,resolution):
                                                                                       'total_energy_consumed_reset': 'sum',
                                                                                       'soc':'last',
                                                                                       'transaction_ongoing':'last',
-                                                                                      'event_max':'max',
-                                                                                      'total_power_site':'mean',
-                                                                                      'gridlimit_kW':'max'})
+                                                                                      'event_max':'max'
+                                                                                        # ,
+                                                                                      # 'total_power_site':'mean',
+                                                                                      # 'gridlimit_kW':'max'
+                                                                                     })
 
     return df2
 
@@ -452,10 +454,10 @@ def filling_data(df2, resolution):
     df2['event_max'] = df2['event_max'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
 
     #Filling total_power_site
-    df2['total_power_site'] = df2['total_power_site'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
+    # df2['total_power_site'] = df2['total_power_site'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
 
     #Filling gridlimit
-    df2['gridlimit_kW'] = df2['gridlimit_kW'].groupby(g).ffill().astype(float, errors = 'ignore')
+    # df2['gridlimit_kW'] = df2['gridlimit_kW'].groupby(g).ffill().astype(float, errors = 'ignore')
 
     #Filling charge_current
     df2['L1_current'] = df2['L1_current'].groupby(g).ffill().fillna(0).astype(float, errors = 'ignore')
@@ -605,7 +607,7 @@ def optimization_input_cp(path,folder,optimization):
         files = glob.glob(f'{path}/{PATH_OUTPUT}/{folder}/*' + "discrete.csv")
 
         for file in files:
-            df_opt = read_csv(file, delimiter=";", decimal=",", doublequote=True, encoding="utf-8",
+            df_opt = read_csv(file, delimiter=";", decimal=".", doublequote=True, encoding="utf-8",
                               index_col='meter_values_timestamp')
             df_opt.index = pd.to_datetime(df_opt.index)
 
@@ -703,7 +705,7 @@ def optimization_input_cp(path,folder,optimization):
             charge_point = file.rsplit('\\', 1)[-1]
             charge_point = file.rsplit('/', 1)[-1] #Mac: '/' instead of '\\'
             charge_point = charge_point[:-12]
-            df_opt.to_csv(f'{PATH_OUTPUT}/{folder}/' + charge_point + 'optimisation.csv', sep=';', decimal=",",
+            df_opt.to_csv(f'{PATH_OUTPUT}/{folder}/' + charge_point + 'optimisation.csv', sep=';', decimal=".",
                           index=True)
 
     return
@@ -720,7 +722,7 @@ def optimization_input_site(path,folder,optimization,resolution):
         dct_df = {}
         i = 0
         for filename in filenames:
-            df = pd.read_csv(filename, delimiter=";", decimal=",", doublequote=True, encoding="utf-8", index_col=None)
+            df = pd.read_csv(filename, delimiter=";", decimal=".", doublequote=True, encoding="utf-8", index_col=None)
             df.meter_values_timestamp = pd.to_datetime(df.meter_values_timestamp)
             dct_df[i] = df
             i = i + 1
@@ -779,7 +781,7 @@ def optimization_input_site(path,folder,optimization,resolution):
                          'power_actual_in_mw']]
 
         # Save site file
-        df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_optimisation.csv', sep=';', decimal=',', index=True)
+        df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_optimisation.csv', sep=';', decimal='.', index=True)
     return
 
 
@@ -814,9 +816,9 @@ def data_preparation(path,folder,cleanData,minimum_charge_power,minimum_plugin_d
 
         #Save files and check if still data exists after cleaning
         if not df3.empty:
-            df3.to_csv(f'{PATH_OUTPUT}/{folder}/charge_point_' + df3['charge_point_id'][0] + '_discrete.csv', sep = ';', decimal=",", index = True)
+            df3.to_csv(f'{PATH_OUTPUT}/{folder}/charge_point_' + df3['charge_point_id'][0] + '_discrete.csv', sep = ';', decimal=".", index = True)
         if not df_event2.empty:
-            df_event2.to_csv(f'{PATH_OUTPUT}/{folder}/charge_point_' + df_event2['charge_point_id'][0] + '_event.csv', sep = ';', decimal=",", index = True)
+            df_event2.to_csv(f'{PATH_OUTPUT}/{folder}/charge_point_' + df_event2['charge_point_id'][0] + '_event.csv', sep = ';', decimal=".", index = True)
     return
 
 
@@ -833,7 +835,7 @@ def add_site_data_discrete(path, folder, resolution):
     dct_df = {}
     i = 0
     for filename in filenames:  
-        df = pd.read_csv(filename, delimiter = ";",decimal = ",", doublequote = True , encoding = "utf-8", index_col=None)
+        df = pd.read_csv(filename, delimiter = ";",decimal = ".", doublequote = True , encoding = "utf-8", index_col=None)
         df.meter_values_timestamp = pd.to_datetime(df.meter_values_timestamp)
         dct_df[i] = df 
         i = i+1
@@ -846,15 +848,16 @@ def add_site_data_discrete(path, folder, resolution):
 
     #concat all files to one
     key=0
-    
-    for key in range(len(dct_df_concat)-1):    
+
+    for key in range(len(dct_df_concat)-1):
+        print(key)
         df_sub = pd.concat([dct_df_concat[key][cols_site], dct_df_concat[key+1][cols_site]]).groupby(['meter_values_timestamp']).sum()
         dct_df_concat[key+1] = df_sub
         dct_df_concat[key+1] = dct_df_concat[key+1].reset_index()
         df_all = dct_df_concat[key+1].copy()
         key = key +1
     # rename columns of df_data
-    df_all.columns = ['meter_values_timestamp','charge_power_site', 'evs_max', 'L1_current_site', 'L2_current_site', 'L3_current_site','L1_offer_site', 'L2_offer_site', 'L3_offer_site', "total_energy_consumed_site",'total_power_site','gridlimit_kW']
+    df_all.columns = ['meter_values_timestamp','charge_power_site', 'evs_max', 'L1_current_site', 'L2_current_site', 'L3_current_site','L1_offer_site', 'L2_offer_site', 'L3_offer_site', "total_energy_consumed_site"]#,'total_power_site','gridlimit_kW']
     df_all.set_index('meter_values_timestamp', inplace=True)
 
     df_all['active_charge_points'] = 0
@@ -934,7 +937,7 @@ def add_site_data_discrete(path, folder, resolution):
     df_all['gridlimit_kW'] = df_all['gridlimit_kW'].ffill().astype(float, errors='ignore')
 
     # save site file
-    df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_discrete.csv', sep = ';', decimal = ',', index = True)
+    df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_discrete.csv', sep = ';', decimal = '.', index = True)
 
     # drop columns which are no longer needed
     df_all.drop(['gridlimit_kW','total_power_site'], axis=1, inplace=True)
@@ -950,7 +953,7 @@ def add_site_data_discrete(path, folder, resolution):
     i = 0
     for filename in filenames:
         dct_df[i] = dct_df[i][['meter_values_timestamp','L1_current','L2_current','L3_current','L1_offer','L2_offer','L3_offer','charge_power','charger_id','connector_id','charge_point_id','ev_suspended','id','plugin_time','session_energy_consumed','total_energy_consumed','status','transaction_ongoing','event_max','total_power_site','gridlimit_kW','charge_power_site','L1_current_site','L2_current_site','L3_current_site','L1_offer_site','L2_offer_site','L3_offer_site']]
-        dct_df[i].to_csv(filename, sep = ';', decimal = ',', index = False)
+        dct_df[i].to_csv(filename, sep = ';', decimal = '.', index = False)
         i = i+1
 
     return
@@ -967,7 +970,7 @@ def add_site_data_event(path, folder):
     dct_df = {}
     i = 0
     for filename in filenames:
-        df = pd.read_csv(filename, delimiter=";", decimal=",", doublequote=True, encoding="utf-8", index_col=0)
+        df = pd.read_csv(filename, delimiter=";", decimal=".", doublequote=True, encoding="utf-8", index_col=0)
         dct_df[i] = df
         i = i + 1
 
@@ -990,7 +993,7 @@ def add_site_data_event(path, folder):
 
 
     # save site file
-    df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_event.csv', sep=';', decimal=',', index=True)
+    df_all.to_csv(f'{PATH_OUTPUT}/{folder}/site_event.csv', sep=';', decimal='.', index=True)
 
     return
 

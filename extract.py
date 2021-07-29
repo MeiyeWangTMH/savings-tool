@@ -6,19 +6,20 @@ import glob
 import os
 
 #Input paths
-PATH_INPUT = 'data/input'
-PATH_OUTPUT = 'data/output'
+# PATH_INPUT = 'data/input/'
+# PATH_OUTPUT = 'data/output/'
 
 #Optional selection, if not all data should be extracted
 filter_cols = False #False = "all data is extracted"
 cols = ['meter_values_timestamp','charge_current','charge_offer','charge_power','charger_id','connector_id']
 
 #Functions
-def read_input(path):
+def read_input(path,PATH_INPUT):
     """
     Read data and delete all unnecessary columns of site index
     """
-    filepath = glob.glob(f'{path}/{PATH_INPUT}/*'+'.csv')
+    # filepath = glob.glob('{path}/{PATH_INPUT}/*'+'.csv')
+    filepath = glob.glob(path+PATH_INPUT+'*.csv')
     df = pd.read_csv(filepath[0], delimiter = ",", doublequote = True , encoding = "utf-8")
 
     #formatting: df['timestamp'] to datetime + converting the timezone
@@ -32,11 +33,11 @@ def read_input(path):
         df["override_max_limit"] = pd.to_numeric(df["override_max_limit"], errors = 'coerce')
 
     #Removing the unnecessary last two columns to decrease the size of the dataframe
-    #if 'total_power' in df.columns:
-    #    df.drop('total_power', axis=1, inplace=True)
+    # if 'total_power' in df.columns:
+       # df.drop('total_power', axis=1, inplace=True)
     if 'total_unmanaged_power' in df.columns:
         df.drop('total_unmanaged_power', axis=1, inplace=True)
-    #if 'override_max_limit' in df.columns:
+    # if 'override_max_limit' in df.columns:
     #    df.drop('override_max_limit', axis=1, inplace=True)
     
     #filerting the data
@@ -57,9 +58,9 @@ def extraction(df):
     e = [pd.DataFrame(yaml.load(x, Loader=yaml.FullLoader)) for x in df['evs']]
 
     for i in range(len(e)):
-        #e[i] = pd.DataFrame(e[i])
-        e[i]['gridlimit_kW'] = df.loc[i, 'override_max_limit']
-        e[i]['total_power_site'] = df.loc[i, 'total_power']
+        e[i] = pd.DataFrame(e[i])
+        # e[i]['gridlimit_kW'] = df.loc[i, 'override_max_limit']
+        # e[i]['total_power_site'] = df.loc[i, 'total_power']
 
     return e
 
@@ -76,8 +77,8 @@ def merge_stationen(e):
     stationen = pd.concat([item for item in e])
 
     #Convert gridlimit from Ampere to kW
-    stationen['gridlimit_kW'] = pd.to_numeric(stationen['gridlimit_kW'])
-    stationen['gridlimit_kW'] = stationen['gridlimit_kW']/1000*230*3
+    # stationen['gridlimit_kW'] = pd.to_numeric(stationen['gridlimit_kW'])
+    # stationen['gridlimit_kW'] = stationen['gridlimit_kW']/1000*230*3
     return stationen
 
 def create_cp_id(stationen):
@@ -104,7 +105,7 @@ def create_csv(stationen, filter_cols, cols):
         if filter_cols == True:
             a = a[cols]
             
-        a.to_csv('Ladepunkt_' + str(item) + '_2020.csv', sep = ';', decimal = ',', index = False)
+        a.to_csv('Ladepunkt_' + str(item) + '_2020.csv', sep = ';', decimal = '.', index = False)
         
     return a
 
@@ -117,11 +118,11 @@ def define_result_folder_name():
     timestamp = pd.Timestamp.now().strftime('%Y-%m-%d_%H-%M-%S')
 
     
-    folder = f'output_{timestamp}'
+    folder = 'output_'+str(timestamp)
     
     return folder
 
-def make_result_folder():
+def make_result_folder(PATH_OUTPUT):
     """
     Make directory
     """
@@ -130,11 +131,12 @@ def make_result_folder():
         os.makedirs(PATH_OUTPUT)
 
     folder = define_result_folder_name()
-    os.mkdir(f'{PATH_OUTPUT}/{folder}')
+    path = os.path.join(PATH_OUTPUT, folder)
+    os.mkdir(path)
     
     return folder
 
-def save_results(stationen):
+def save_results(stationen,PATH_OUTPUT):
     """
     Convert tool results into dataframe and save all
     data in new defined folder
@@ -146,7 +148,8 @@ def save_results(stationen):
     
     key = 0
     
-    folder = make_result_folder()
+    folder = make_result_folder(PATH_OUTPUT)
+    path = os.path.join(PATH_OUTPUT, folder)
 
     #creating individual csv-files - for each station
     for item in a:
@@ -155,24 +158,24 @@ def save_results(stationen):
         if filter_cols == True:
             df = df[cols]
               
-        df.to_csv(f'{PATH_OUTPUT}/{folder}/charge_point_{str(item)}.csv',sep=';',decimal=',', index = False)
+        df.to_csv(path+'/charge_point_'+str(item)+'.csv',sep=';',decimal='.', index = False)
         
     
     return folder
 
 
-def master(path, filtering,date_start,date_end):
+def master(path,PATH_INPUT,PATH_OUTPUT, filtering,date_start,date_end):
     """
     Extracts and saves all available data raw data index file. Data is stored charge point specific.
     """
-    df = read_input(path)
+    df = read_input(path,PATH_INPUT)
     if filtering == True:
         df = range_of_data(df,date_start,date_end)
         
     e = extraction(df)
     stationen = merge_stationen(e)
     stationen =  create_cp_id(stationen)
-    folder = save_results(stationen)
+    folder = save_results(stationen,PATH_OUTPUT)
 
         
     return folder

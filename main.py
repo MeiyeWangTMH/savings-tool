@@ -9,22 +9,26 @@ try:
 except:
     pass
 
-#Input paths
+#Input
+ProjectName = 'Stockton'
 
-PATH_INPUT = 'data/input'
-PATH_OUTPUT = 'data/output'
+#Specify Paths
+PATH_INPUT = 'data/'+ProjectName+'/Input/'
+PATH_OUTPUT = 'data/'+ProjectName+'/Output/'
 
-path =r'C:\Users\Lap\OneDrive - The Mobility House GmbH\Dokumente\tmh-site-data-preprocessing'
+# path =r'C:\Users\Lap\OneDrive - The Mobility House GmbH\Dokumente\tmh-site-data-preprocessing'
+# path ='/Users/sarahwoogen/PycharmProjects/tmh-site-data-preprocessing/'
+path ='/Users/meiyewang/Documents/Tools/tmh-site-data-preprocessing/'
 
 #Setting up optional tool function
 
 #Should the range of the data be adapted
 filter_time = False #Not applied if false
 date_start = "2020-01-01"
-date_end   = "2020-03-01" #this date will be first day to not be included
+date_end   = "2021-08-01" #this date will be first day to not be included
 
 #timezone
-timezone = 'Europe/Berlin' #options e.g. : 'UTC' or 'Europe/Berlin'
+timezone = 'US/Pacific' #options e.g. : 'UTC' or 'Europe/Berlin'
 
 #Revising the data - Should missing Logs be calculated #Not applied if false
 reviseData = False
@@ -52,12 +56,13 @@ start = time.time()
 #Data extraction
 print("")
 print("Start data extraction...")
-folder = master(path,filter_time, date_start, date_end)
+folder = master(path,PATH_INPUT,PATH_OUTPUT,filter_time, date_start, date_end)#`    `q21    `
 
 #Data preparation
 print("________________")
 print("")
 print("Start data preparation for single charge point...")
+
 data_preparation(path,folder,cleanData,minimum_charge_power,minimum_plugin_duration,minimum_energy,resolution,reviseData, timezone)
 optimization_input_cp(path,folder,optimization)
 
@@ -79,7 +84,7 @@ if round((end - start)<60,2):
     print("Runtime: " + str(round((end - start),2))+" seconds")
 
 elif  round((end - start)/60 < 60,2):
-    print("Runtime: " + str(round((end - start)/60,2))+" minutes")  
+    print("Runtime: " + str(round((end - start)/60,2))+" minutes")
 
 else:
     print("Runtime: " + str(round((end - start)/3600,2))+" hours")
