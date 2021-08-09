@@ -56,7 +56,7 @@ def extraction(df):
     print("Extract column '"'evs'"''...")
     #e = [yaml.load(x, Loader = yaml.FullLoader) for x in df['evs']]
     e = [pd.DataFrame(yaml.load(x, Loader=yaml.FullLoader)) for x in df['evs']]
-
+    print(e)
     for i in range(len(e)):
         e[i] = pd.DataFrame(e[i])
         # e[i]['gridlimit_kW'] = df.loc[i, 'override_max_limit']
@@ -174,6 +174,7 @@ def master(path,PATH_INPUT,PATH_OUTPUT, filtering,date_start,date_end):
         
     e = extraction(df)
     stationen = merge_stationen(e)
+    print(stationen)
     stationen =  create_cp_id(stationen)
     folder = save_results(stationen,PATH_OUTPUT)
 

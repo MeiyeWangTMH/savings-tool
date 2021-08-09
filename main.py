@@ -10,7 +10,7 @@ except:
     pass
 
 #Input
-ProjectName = 'Stockton'
+ProjectName = 'USA-2711'
 
 #Specify Paths
 PATH_INPUT = 'data/'+ProjectName+'/Input/'
