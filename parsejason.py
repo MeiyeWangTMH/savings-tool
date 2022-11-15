@@ -40,7 +40,10 @@ def parse(inputpath,outputpath,siteidDic):
             siteid = file.split("_")[1]
 
             site = siteidDic[siteid]
+            siteSet.add(site)
+
             with open(inputpath + "/" + file) as j:
+                # print(j)
                 jsondata = json.load(j)
                 hits = jsondata['hits']
 
@@ -54,17 +57,29 @@ def parse(inputpath,outputpath,siteidDic):
         count += 1
     return siteSet
 
-def combinecsv(outputpath,siteSet):
-    os.chdir(outputpath )
+def combinecsv(outputpath,siteSet,typeList):
+    os.chdir(outputpath)
     extension = 'csv'
+    print('combined_csv')
     for site in siteSet:
-        for typ in ["Error Messages", "Charging Data"]:
+        for typ in typeList:
+
             all_filenames = [i for i in glob.glob(typ + "*" + site + "*".format(extension))]
+            # print(typ + "*" + site + "*".format(extension))
+            # print(all_filenames)
             # combine all files in the list
             combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+            try:
+                combined_csv = pd.concat([pd.read_csv(f) for f in all_filenames])
+            except:
+                combined_csv = pd.read_csv(all_filenames[0])
+
+            # combined_csv = pd.read_csv( all_filenames[0])
             # export to csv
+            # print(combined_csv)
             combined_csv.to_csv( "Input/" + typ + "_" + site + "_comp.csv", index=False, encoding='utf-8-sig')
 
-def main(inputpath, outputpath, siteidDic):
+def main(inputpath, outputpath, siteidDic,typeList):
     siteSet = parse(inputpath, outputpath, siteidDic)
-    combinecsv(outputpath, siteSet)
+    print(siteSet)
+    combinecsv(outputpath,siteSet,typeList)

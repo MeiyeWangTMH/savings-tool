@@ -828,8 +828,8 @@ def add_site_data_discrete(path, folder, resolution):
     """
 
     #Get all discrete charge point files
-    filenames = glob.glob(f'{path}/{PATH_OUTPUT}/{folder}/*'+'_discrete.csv')
-
+    filenames = glob.glob(path/PATH_OUTPUT/folder/'*'+'_discrete.csv')
+    # filenames = glob.glob(path/PATH_OUTPUT/folder/'*'+'.xlsx')
 
     #read all files
     dct_df = {}
@@ -857,6 +857,7 @@ def add_site_data_discrete(path, folder, resolution):
         df_all = dct_df_concat[key+1].copy()
         key = key +1
     # rename columns of df_data
+    print(df_all)
     df_all.columns = ['meter_values_timestamp','charge_power_site', 'evs_max', 'L1_current_site', 'L2_current_site', 'L3_current_site','L1_offer_site', 'L2_offer_site', 'L3_offer_site', "total_energy_consumed_site"]#,'total_power_site','gridlimit_kW']
     df_all.set_index('meter_values_timestamp', inplace=True)
 

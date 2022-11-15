@@ -142,6 +142,7 @@ def save_results(stationen,PATH_OUTPUT,typ,site,filter_cols=False,cols=[], filte
 
         df = stationen
         df = df.sort_values('@timestamp')
+        # print(df.head())
         if filter_cols == True:
             df = df[cols]
         if format == 'excel':
@@ -162,7 +163,7 @@ def save_results(stationen,PATH_OUTPUT,typ,site,filter_cols=False,cols=[], filte
             df.to_csv(path+'/Charging Data - '+str(item)+'.csv',sep=';',decimal='.', index = False)
 
     
-    return folder
+    return folder,df
 
 
 def master(path,PATH_INPUT,PATH_OUTPUT,
@@ -198,10 +199,12 @@ def master(path,PATH_INPUT,PATH_OUTPUT,
                     else :
                         to_rep = {}
                     stationen = create_cp_id(stationen, filter_replace_id, to_rep)
-                    folder = save_results(stationen, PATH_OUTPUT, typ, site, filter_cols, cols, filter_aggregated,
+                    folder,df = save_results(stationen, PATH_OUTPUT, typ, site, filter_cols, cols, filter_aggregated,
                                           format, projectName)
 
         elif typ == "Charging Data":
+
+            # print("Charging Data extracted")
             columnToUnpack = "evs"
             otherColumn = ['override_max_limit','@timestamp']
             for file in os.listdir(path + PATH_INPUT):
@@ -223,10 +226,11 @@ def master(path,PATH_INPUT,PATH_OUTPUT,
                         to_rep = {}
 
                     stationen = create_cp_id(stationen, filter_replace_id, to_rep)
-                    folder = save_results(stationen, PATH_OUTPUT, typ, site, filter_cols, cols, filter_aggregated,
+                    # print(stationen)
+                    folder,df = save_results(stationen, PATH_OUTPUT, typ, site, filter_cols, cols, filter_aggregated,
                                           format, projectName)
 
         else:
             print('typ not in default list, choose between "Error Messages" and "Charging Data"')
-    return folder
+    return folder,df
     
